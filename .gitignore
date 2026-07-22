@@ -13,7 +13,7 @@ node_modules
 # production / build outputs
 /dist/
 /build/
-
+!/build/icon.png
 # databases
 /database/
 *.db
