@@ -15,7 +15,7 @@ let mainWindow;
 let nextServer;
 
 async function startServer() {
-  const detectPort = require('detect-port');
+  const detectPort = require('detect-port').detect;
   // Next.js dev port is 3001 in package.json, so let's try 3001 first, otherwise find any free port
   const port = await detectPort(3001);
   console.log(`[Electron] Starting Next.js server on port ${port}...`);
