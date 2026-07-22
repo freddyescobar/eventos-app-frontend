@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  output: 'standalone',
+  output: process.env.ELECTRON_BUILD ? undefined : 'standalone',
   webpack: (config, { isServer }) => {
     // Configuración para better-sqlite3
     if (isServer) {

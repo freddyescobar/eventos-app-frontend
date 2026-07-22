@@ -7,8 +7,8 @@
     "build": "next build",
     "start": "next start -p 3001",
     "lint": "next lint",
-    "electron:dev": "electron .",
-    "electron:build": "npm run build && electron-builder"
+    "electron:dev": "cross-env ELECTRON_BUILD=true electron .",
+    "electron:build": "cross-env ELECTRON_BUILD=true npm run build && electron-builder"
   },
   "dependencies": {
     "better-sqlite3": "^11.8.1",
@@ -28,6 +28,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "autoprefixer": "^10.0.1",
+    "cross-env": "^10.1.0",
     "detect-port": "^2.1.0",
     "electron": "^31.4.0",
     "electron-builder": "^24.13.3",
