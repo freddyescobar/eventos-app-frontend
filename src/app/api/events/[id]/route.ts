@@ -49,7 +49,7 @@ export async function PUT(
   try {
     const { id } = await params;
     const body = await request.json();
-    const { name, location, date, background_image_path, is_active } = body;
+    const { name, location, date, background_image_path, is_active, status, cutoff_time } = body;
 
     const db = getDatabase();
 
@@ -68,8 +68,10 @@ export async function PUT(
       );
     }
 
+    const finalIsActive = status === 'closed' ? 0 : (is_active !== undefined ? (is_active ? 1 : 0) : undefined);
+
     // Si se está activando este evento, desactivar todos los demás
-    if (is_active === 1 || is_active === true) {
+    if (finalIsActive === 1) {
       db.prepare('UPDATE events SET is_active = 0 WHERE id != ?').run(id);
     }
 
@@ -80,14 +82,18 @@ export async function PUT(
           location = COALESCE(?, location),
           date = COALESCE(?, date),
           background_image_path = COALESCE(?, background_image_path),
-          is_active = COALESCE(?, is_active)
+          is_active = COALESCE(?, is_active),
+          status = COALESCE(?, status),
+          cutoff_time = COALESCE(?, cutoff_time)
       WHERE id = ?
     `).run(
       name || null,
       location || null,
       date || null,
       background_image_path !== undefined ? background_image_path : null,
-      is_active !== undefined ? (is_active ? 1 : 0) : null,
+      finalIsActive !== undefined ? finalIsActive : null,
+      status || null,
+      cutoff_time || null,
       id
     );
 

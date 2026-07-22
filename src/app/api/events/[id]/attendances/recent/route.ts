@@ -33,7 +33,8 @@ export async function GET(
         p.cnrodni,
         p.ccargo,
         a.type,
-        a.check_time
+        a.check_time,
+        a.is_late
       FROM attendances a
       INNER JOIN persons p ON a.person_id = p.id
       WHERE a.event_id = ?

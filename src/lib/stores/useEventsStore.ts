@@ -21,6 +21,7 @@ interface EventsState {
   createEvent: (event: Omit<EventModel, 'id' | 'created_at'>) => Promise<EventModel | null>;
   removeEvent: (id: number) => Promise<boolean>;
   toggleEventActive: (id: number, isActive: boolean) => Promise<boolean>;
+  closeEvent: (id: number) => Promise<boolean>;
 }
 
 export const useEventsStore = create<EventsState>((set, get) => ({
@@ -156,6 +157,32 @@ export const useEventsStore = create<EventsState>((set, get) => ({
       }
     } catch (error) {
       console.error('Error toggling event:', error);
+      return false;
+    }
+  },
+
+  // Cerrar evento permanentemente
+  closeEvent: async (id) => {
+    try {
+      const response = await fetch(`/api/events/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status: 'closed', is_active: false }),
+      });
+
+      const result = await response.json();
+
+      if (result.success) {
+        await get().fetchEvents();
+        return true;
+      } else {
+        set({ error: result.error || 'Error al cerrar el evento' });
+        return false;
+      }
+    } catch (error) {
+      console.error('Error closing event:', error);
       return false;
     }
   },

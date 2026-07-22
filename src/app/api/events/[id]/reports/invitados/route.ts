@@ -42,6 +42,11 @@ export async function GET(
           ELSE 'NO'
         END as asistio,
         (
+          SELECT check_time FROM attendances
+          WHERE person_id = p.id AND event_id = p.event_id AND type = 'IN'
+          ORDER BY check_time ASC LIMIT 1
+        ) as hora_ingreso,
+        (
           SELECT GROUP_CONCAT(type || ' ' || strftime('%H:%M', check_time), ', ')
           FROM attendances
           WHERE person_id = p.id AND event_id = p.event_id

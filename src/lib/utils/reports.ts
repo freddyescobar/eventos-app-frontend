@@ -27,6 +27,7 @@ interface EventData {
   name: string;
   location: string;
   date: string;
+  cutoff_time?: string | null;
 }
 
 interface Invitado {
@@ -37,6 +38,7 @@ interface Invitado {
   area: string;
   oficina: string;
   asistio: string;
+  hora_ingreso?: string | null;
   registros_asistencia: string | null;
 }
 
@@ -249,6 +251,28 @@ export async function generateSouvenirsExcel(
   XLSX.writeFile(wb, fileName);
 }
 
+function getPunctualityStatus(horaIngreso: string | null | undefined, cutoffTime: string | null | undefined): 'A TIEMPO' | 'TARDÍO' | '-' {
+  if (!horaIngreso || !cutoffTime) return '-';
+  try {
+    let timeStr = "";
+    if (horaIngreso.includes('T')) {
+      timeStr = horaIngreso.split('T')[1].substring(0, 5); // "HH:MM"
+    } else {
+      const parts = horaIngreso.split(' ');
+      timeStr = parts.length > 1 ? parts[1].substring(0, 5) : horaIngreso.substring(0, 5);
+    }
+    const [checkHour, checkMin] = timeStr.split(':').map(Number);
+    const [cutoffHour, cutoffMin] = cutoffTime.split(':').map(Number);
+    if (isNaN(checkHour) || isNaN(checkMin) || isNaN(cutoffHour) || isNaN(cutoffMin)) return '-';
+    
+    const checkMinTotal = checkHour * 60 + checkMin;
+    const cutoffMinTotal = cutoffHour * 60 + cutoffMin;
+    return checkMinTotal > cutoffMinTotal ? 'TARDÍO' : 'A TIEMPO';
+  } catch (e) {
+    return '-';
+  }
+}
+
 /**
  * Genera un Excel de reporte de invitados con asistencia
  */
@@ -266,25 +290,41 @@ export async function generateInvitadosExcel(
     [`Evento: ${event.name}`],
     [`Lugar: ${event.location}`],
     [`Fecha: ${format(new Date(event.date), "dd 'de' MMMM 'de' yyyy", { locale: es })}`],
+    [`Hora Límite de Ingreso: ${event.cutoff_time || 'No especificada'}`],
     [`Total de invitados: ${stats.total}`],
     [`Asistieron: ${stats.asistieron}`],
     [`No asistieron: ${stats.noAsistieron}`],
     [], // Línea en blanco
-    ['#', 'Código', 'Nombre Completo', 'DNI', 'Cargo', 'Área', 'Oficina', '¿Asistió?', 'Registros de Asistencia']
+    ['#', 'Código', 'Nombre Completo', 'DNI', 'Cargo', 'Área', 'Oficina', '¿Asistió?', 'Hora de Ingreso', 'Puntualidad', 'Registros de Asistencia']
   ];
 
   // Datos de invitados
-  const data = invitados.map((inv, index) => [
-    index + 1,
-    inv.codigo,
-    inv.nombre,
-    inv.dni,
-    inv.cargo,
-    inv.area,
-    inv.oficina,
-    inv.asistio,
-    inv.registros_asistencia || '-',
-  ]);
+  const data = invitados.map((inv, index) => {
+    let formattedHoraIngreso = '-';
+    if (inv.hora_ingreso) {
+      try {
+        const dateObj = new Date(inv.hora_ingreso);
+        formattedHoraIngreso = format(dateObj, 'HH:mm:ss');
+      } catch (e) {
+        formattedHoraIngreso = inv.hora_ingreso;
+      }
+    }
+    const punctuality = getPunctualityStatus(inv.hora_ingreso, event.cutoff_time);
+
+    return [
+      index + 1,
+      inv.codigo,
+      inv.nombre,
+      inv.dni,
+      inv.cargo,
+      inv.area,
+      inv.oficina,
+      inv.asistio,
+      formattedHoraIngreso,
+      punctuality,
+      inv.registros_asistencia || '-',
+    ];
+  });
 
   // Combinar header y data
   const ws_data = [...header, ...data];
@@ -302,6 +342,8 @@ export async function generateInvitadosExcel(
     { wch: 25 }, // Área
     { wch: 25 }, // Oficina
     { wch: 10 }, // ¿Asistió?
+    { wch: 15 }, // Hora de Ingreso
+    { wch: 15 }, // Puntualidad
     { wch: 40 }, // Registros
   ];
 

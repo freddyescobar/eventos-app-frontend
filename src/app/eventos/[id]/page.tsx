@@ -52,6 +52,7 @@ export default function EventDashboard() {
   const [searchAsistencias, setSearchAsistencias] = useState('');
   const [searchPersonas, setSearchPersonas] = useState('');
   const [searchSouvenirs, setSearchSouvenirs] = useState('');
+  const [punctualityFilter, setPunctualityFilter] = useState<'all' | 'punctual' | 'late' | 'out'>('all');
 
   // Fetch inicial
   useEffect(() => {
@@ -339,10 +340,39 @@ export default function EventDashboard() {
           <div className="p-6">
             {activeTab === 'asistencias' && (
               <>
-                <div className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div className="mb-6 flex flex-col xl:flex-row xl:items-center justify-between gap-4">
                   <h2 className="text-xl font-bold text-secondary">
                     Últimos Registros (Entradas/Salidas)
                   </h2>
+                  
+                  {/* Filtros de Puntualidad */}
+                  <div className="flex bg-gray-100 p-1 rounded-lg border border-gray-200">
+                    <button
+                      onClick={() => setPunctualityFilter('all')}
+                      className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${punctualityFilter === 'all' ? 'bg-white text-secondary shadow-sm' : 'text-secondary-light hover:text-secondary'}`}
+                    >
+                      Todos
+                    </button>
+                    <button
+                      onClick={() => setPunctualityFilter('punctual')}
+                      className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${punctualityFilter === 'punctual' ? 'bg-white text-green-700 shadow-sm' : 'text-secondary-light hover:text-green-600'}`}
+                    >
+                      A tiempo
+                    </button>
+                    <button
+                      onClick={() => setPunctualityFilter('late')}
+                      className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${punctualityFilter === 'late' ? 'bg-white text-amber-700 shadow-sm' : 'text-secondary-light hover:text-amber-600'}`}
+                    >
+                      Tardíos
+                    </button>
+                    <button
+                      onClick={() => setPunctualityFilter('out')}
+                      className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${punctualityFilter === 'out' ? 'bg-white text-red-600 shadow-sm' : 'text-secondary-light hover:text-red-500'}`}
+                    >
+                      Salidas
+                    </button>
+                  </div>
+
                   <div className="relative flex-1 max-w-md">
                     <span className="absolute left-3 top-1/2 -translate-y-1/2">🔍</span>
                     <input
@@ -359,11 +389,22 @@ export default function EventDashboard() {
                   </div>
                 </div>
 
-                {recentAttendances.length === 0 ? (
+                {recentAttendances
+                  .filter(a =>
+                    a.cnomper.toLowerCase().includes(searchAsistencias.toLowerCase()) ||
+                    a.cnrodni.includes(searchAsistencias)
+                  )
+                  .filter(a => {
+                    if (punctualityFilter === 'all') return true;
+                    if (punctualityFilter === 'punctual') return a.type === 'IN' && !a.is_late;
+                    if (punctualityFilter === 'late') return a.type === 'IN' && a.is_late;
+                    if (punctualityFilter === 'out') return a.type === 'OUT';
+                    return true;
+                  }).length === 0 ? (
                   <div className="text-center py-12">
                     <div className="text-6xl mb-4">📋</div>
                     <h3 className="text-xl font-semibold text-secondary mb-2">
-                      No hay registros
+                      No hay registros coincidentes
                     </h3>
                   </div>
                 ) : (
@@ -373,6 +414,13 @@ export default function EventDashboard() {
                         a.cnomper.toLowerCase().includes(searchAsistencias.toLowerCase()) ||
                         a.cnrodni.includes(searchAsistencias)
                       )
+                      .filter(a => {
+                        if (punctualityFilter === 'all') return true;
+                        if (punctualityFilter === 'punctual') return a.type === 'IN' && !a.is_late;
+                        if (punctualityFilter === 'late') return a.type === 'IN' && a.is_late;
+                        if (punctualityFilter === 'out') return a.type === 'OUT';
+                        return true;
+                      })
                       .map((attendance, index) => {
                         // Buscar souvenirs de esta persona
                         const personDeliveries = deliveries.filter(d => d.person_id === attendance.person_id);
@@ -380,14 +428,21 @@ export default function EventDashboard() {
                         return (
                           <div
                             key={index}
-                            className="flex items-center justify-between p-4 bg-neutral-light rounded-lg hover:bg-gray-100 transition-colors border-l-4 border-l-primary"
+                            className={`flex items-center justify-between p-4 bg-neutral-light rounded-lg hover:bg-gray-100 transition-colors border-l-4 ${attendance.type === 'IN' ? (attendance.is_late ? 'border-l-amber-500' : 'border-l-green-500') : 'border-l-red-500'}`}
                           >
                             <div className="flex items-center gap-4">
-                              <div className={`w-12 h-12 ${attendance.type === 'IN' ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'} rounded-full flex items-center justify-center font-bold`}>
+                              <div className={`w-12 h-12 ${attendance.type === 'IN' ? (attendance.is_late ? 'bg-amber-100 text-amber-600' : 'bg-green-100 text-green-600') : 'bg-red-100 text-red-600'} rounded-full flex items-center justify-center font-bold`}>
                                 {attendance.type === 'IN' ? '↓' : '↑'}
                               </div>
                               <div>
-                                <p className="font-semibold text-secondary">{attendance.cnomper}</p>
+                                <div className="flex items-center gap-2">
+                                  <p className="font-semibold text-secondary">{attendance.cnomper}</p>
+                                  {attendance.type === 'IN' && (
+                                    <span className={`px-2 py-0.5 text-[10px] font-bold rounded ${attendance.is_late ? 'bg-amber-100 text-amber-700' : 'bg-green-100 text-green-700'}`}>
+                                      {attendance.is_late ? '⏰ Tardío' : '✓ A tiempo'}
+                                    </span>
+                                  )}
+                                </div>
                                 <p className="text-sm text-secondary-light">
                                   {attendance.type === 'IN' ? 'ENTRADA' : 'SALIDA'} • DNI: {attendance.cnrodni}
                                 </p>

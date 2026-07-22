@@ -3,14 +3,22 @@ import { getDatabase } from '@/lib/db/sqlite';
 import { EventModel, ApiResponse } from '@/lib/types';
 
 // GET /api/events - Obtener todos los eventos
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
+    const { searchParams } = new URL(request.url);
+    const excludeClosed = searchParams.get('status') === 'open' || searchParams.get('exclude_closed') === 'true';
     const db = getDatabase();
 
-    const events = db.prepare(`
-      SELECT * FROM events
-      ORDER BY date DESC, created_at DESC
-    `).all() as EventModel[];
+    let query = 'SELECT * FROM events';
+    const queryParams: any[] = [];
+
+    if (excludeClosed) {
+      query += " WHERE status != 'closed'";
+    }
+
+    query += ' ORDER BY date DESC, created_at DESC';
+
+    const events = db.prepare(query).all(...queryParams) as EventModel[];
 
     return NextResponse.json({
       success: true,
@@ -32,7 +40,7 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { name, location, date, background_image_path, is_active } = body;
+    const { name, location, date, background_image_path, is_active, status, cutoff_time } = body;
 
     // Validaciones
     if (!name || !location || !date) {
@@ -48,20 +56,24 @@ export async function POST(request: NextRequest) {
     const db = getDatabase();
     const now = new Date().toISOString();
 
+    const finalIsActive = status === 'closed' ? 0 : (is_active !== undefined ? (is_active ? 1 : 0) : 1);
+
     // Si el nuevo evento es activo, desactivar todos los demás
-    if (is_active !== 0) {
+    if (finalIsActive !== 0) {
       db.prepare('UPDATE events SET is_active = 0').run();
     }
 
     const result = db.prepare(`
-      INSERT INTO events (name, location, date, background_image_path, is_active, created_at)
-      VALUES (?, ?, ?, ?, ?, ?)
+      INSERT INTO events (name, location, date, background_image_path, is_active, status, cutoff_time, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `).run(
       name,
       location,
       date,
       background_image_path || null,
-      is_active !== undefined ? (is_active ? 1 : 0) : 1,
+      finalIsActive,
+      status || 'open',
+      cutoff_time || null,
       now
     );
 

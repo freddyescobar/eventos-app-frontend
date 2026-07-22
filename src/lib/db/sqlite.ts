@@ -34,6 +34,9 @@ export function getDatabase(): Database.Database {
   // Inicializar esquema
   initializeSchema(db);
 
+  // Aplicar migraciones para base de datos existente
+  applyMigrations(db);
+
   return db;
 }
 
@@ -69,6 +72,8 @@ function initializeSchema(db: Database.Database) {
       date TEXT NOT NULL,
       background_image_path TEXT,
       is_active INTEGER DEFAULT 1,
+      status TEXT DEFAULT 'open',
+      cutoff_time TEXT,
       created_at TEXT NOT NULL
     )
   `);
@@ -109,6 +114,7 @@ function initializeSchema(db: Database.Database) {
       created_at TEXT NOT NULL,
       device_id TEXT NOT NULL,
       synced_at TEXT,
+      is_late INTEGER DEFAULT 0,
       FOREIGN KEY (event_id) REFERENCES events (id) ON DELETE CASCADE,
       FOREIGN KEY (person_id) REFERENCES persons (id) ON DELETE CASCADE
     )
@@ -205,6 +211,31 @@ function initializeSchema(db: Database.Database) {
   `).run('admin', 'admin123', now);
 
   console.log('Esquema de base de datos inicializado correctamente');
+}
+
+function applyMigrations(db: Database.Database) {
+  // Verificar si la tabla events ya tiene los campos status y cutoff_time
+  const columns = db.prepare("PRAGMA table_info(events)").all() as { name: string }[];
+  const columnNames = columns.map(c => c.name);
+
+  if (!columnNames.includes('status')) {
+    console.log("Migración: Agregando columna 'status' a la tabla 'events'...");
+    db.exec("ALTER TABLE events ADD COLUMN status TEXT DEFAULT 'open'");
+  }
+
+  if (!columnNames.includes('cutoff_time')) {
+    console.log("Migración: Agregando columna 'cutoff_time' a la tabla 'events'...");
+    db.exec("ALTER TABLE events ADD COLUMN cutoff_time TEXT");
+  }
+
+  // Verificar si la tabla attendances ya tiene la columna is_late
+  const attendanceCols = db.prepare("PRAGMA table_info(attendances)").all() as { name: string }[];
+  const attendanceColNames = attendanceCols.map(c => c.name);
+
+  if (!attendanceColNames.includes('is_late')) {
+    console.log("Migración: Agregando columna 'is_late' a la tabla 'attendances'...");
+    db.exec("ALTER TABLE attendances ADD COLUMN is_late INTEGER DEFAULT 0");
+  }
 }
 
 export function closeDatabase() {

@@ -9,7 +9,7 @@ export async function GET() {
 
     const activeEvent = db.prepare(`
       SELECT * FROM events
-      WHERE is_active = 1
+      WHERE is_active = 1 AND status != 'closed'
       ORDER BY created_at DESC
       LIMIT 1
     `).get() as EventModel | undefined;

@@ -31,7 +31,7 @@ export async function GET(
     const attendances = db.prepare(`
       SELECT
         a.id, a.event_id, a.person_id, a.type, a.check_time,
-        a.notes, a.created_at, a.device_id, a.synced_at,
+        a.notes, a.created_at, a.device_id, a.synced_at, a.is_late,
         p.cnomper, p.cnrodni, p.ccargo, p.carea, p.cdesest,
         e.name as event_name
       FROM attendances a
@@ -54,6 +54,7 @@ export async function GET(
         created_at: row.created_at,
         device_id: row.device_id,
         synced_at: row.synced_at,
+        is_late: row.is_late,
       },
       person: {
         cnomper: row.cnomper,
@@ -115,7 +116,7 @@ export async function POST(
     const db = getDatabase();
 
     // Verificar que el evento existe
-    const event = db.prepare('SELECT id FROM events WHERE id = ?').get(eventId);
+    const event = db.prepare('SELECT id, cutoff_time FROM events WHERE id = ?').get(eventId) as { id: number; cutoff_time: string | null } | undefined;
     if (!event) {
       return NextResponse.json(
         {
@@ -147,6 +148,30 @@ export async function POST(
     // y solo actualizaremos el estado.
 
     const now = new Date().toISOString();
+    const checkTime = check_time || check_in_time || now;
+
+    // Calcular si la entrada es tardía
+    let isLate = 0;
+    if (type === 'IN' && event.cutoff_time) {
+      try {
+        let timeStr = "";
+        if (checkTime.includes('T')) {
+          timeStr = checkTime.split('T')[1].substring(0, 5); // "HH:MM"
+        } else {
+          const parts = checkTime.split(' ');
+          timeStr = parts.length > 1 ? parts[1].substring(0, 5) : checkTime.substring(0, 5);
+        }
+        const [checkHour, checkMin] = timeStr.split(':').map(Number);
+        const [cutoffHour, cutoffMin] = event.cutoff_time.split(':').map(Number);
+        if (!isNaN(checkHour) && !isNaN(checkMin) && !isNaN(cutoffHour) && !isNaN(cutoffMin)) {
+          const checkMinTotal = checkHour * 60 + checkMin;
+          const cutoffMinTotal = cutoffHour * 60 + cutoffMin;
+          isLate = checkMinTotal > cutoffMinTotal ? 1 : 0;
+        }
+      } catch (e) {
+        console.error('Error calculating is_late:', e);
+      }
+    }
 
     // Iniciar transacción
     const transaction = db.transaction(() => {
@@ -154,17 +179,18 @@ export async function POST(
       const result = db.prepare(`
         INSERT INTO attendances (
           event_id, person_id, type, check_time, notes,
-          created_at, device_id, synced_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+          created_at, device_id, synced_at, is_late
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
       `).run(
         eventId,
         person_id,
         type,
-        check_time || check_in_time || now,
+        checkTime,
         notes || null,
         now,
         device_id,
-        now
+        now,
+        isLate
       );
 
       // Actualizar estado de la persona

@@ -7,6 +7,8 @@ export interface EventModel {
   date: string;
   background_image_path?: string | null;
   is_active: boolean;
+  status?: 'open' | 'closed';
+  cutoff_time?: string | null;
   created_at: string;
 }
 
@@ -39,6 +41,7 @@ export interface AttendanceModel {
   created_at: string;
   device_id: string;
   synced_at?: string | null;
+  is_late?: number;
 }
 
 export interface AttendanceDetailModel {

@@ -1,12 +1,14 @@
 {
   "name": "eventos-app-frontend",
   "version": "1.0.0",
-  "private": true,
+  "main": "electron-main.js",
   "scripts": {
     "dev": "next dev -p 3001",
     "build": "next build",
     "start": "next start -p 3001",
-    "lint": "next lint"
+    "lint": "next lint",
+    "electron:dev": "electron .",
+    "electron:build": "npm run build && electron-builder"
   },
   "dependencies": {
     "better-sqlite3": "^11.8.1",
@@ -20,15 +22,53 @@
     "zustand": "^5.0.2"
   },
   "devDependencies": {
+    "@electron/rebuild": "^4.2.0",
     "@types/better-sqlite3": "^7.6.12",
     "@types/node": "^22",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "autoprefixer": "^10.0.1",
+    "detect-port": "^2.1.0",
+    "electron": "^31.4.0",
+    "electron-builder": "^24.13.3",
     "eslint": "^9",
     "eslint-config-next": "^15.1.4",
     "postcss": "^8",
     "tailwindcss": "^3.4.1",
     "typescript": "^5"
+  },
+  "build": {
+    "appId": "com.asistencia.eventos",
+    "productName": "Control de Eventos",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "**/*",
+      "!database/**/*",
+      "!src/**/*",
+      "!tsconfig.json",
+      "!tailwind.config.ts",
+      "!postcss.config.mjs",
+      "!.git/**/*",
+      "!.next/cache/**/*"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "mac": {
+      "target": [
+        "dmg"
+      ],
+      "category": "public.app-category.business"
+    },
+    "asar": false
   }
 }
