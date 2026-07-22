@@ -13,6 +13,7 @@
   "dependencies": {
     "better-sqlite3": "^11.8.1",
     "date-fns": "^4.1.0",
+    "detect-port": "^2.1.0",
     "jspdf": "^4.0.0",
     "jspdf-autotable": "^5.0.7",
     "next": "^15.1.4",
@@ -29,7 +30,6 @@
     "@types/react-dom": "^19",
     "autoprefixer": "^10.0.1",
     "cross-env": "^10.1.0",
-    "detect-port": "^2.1.0",
     "electron": "^31.4.0",
     "electron-builder": "^24.13.3",
     "eslint": "^9",

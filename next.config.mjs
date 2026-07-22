@@ -1,6 +1,5 @@
-import type { NextConfig } from "next";
-
-const nextConfig: NextConfig = {
+/** @type {import('next').NextConfig} */
+const nextConfig = {
   output: process.env.ELECTRON_BUILD ? undefined : 'standalone',
   webpack: (config, { isServer }) => {
     // Configuración para better-sqlite3

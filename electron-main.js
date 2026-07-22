@@ -5,11 +5,16 @@ const next = require('next');
 
 // Set production environment
 const isProd = process.env.NODE_ENV === 'production' || app.isPackaged;
+if (isProd) process.env.NODE_ENV = 'production';
+process.env.ELECTRON_BUILD = 'true'; // Ensure Next.js doesn't use standalone mode during runtime
 
 // Set database path to userData directory to avoid read-only or permission issues in production
 const dbPath = path.join(app.getPath('userData'), 'database', 'central.db');
 process.env.DATABASE_PATH = dbPath;
 console.log('[Electron] Database Path configured to:', dbPath);
+
+// Disable hardware acceleration to prevent GPU crashes on some Windows systems
+app.disableHardwareAcceleration();
 
 let mainWindow;
 let nextServer;
@@ -34,9 +39,23 @@ async function startServer() {
       handle(req, res);
     });
 
-    nextServer.listen(port, '127.0.0.1', (err) => {
+    nextServer.listen(port, '0.0.0.0', (err) => {
       if (err) return reject(err);
-      console.log(`[Electron] Next.js server listening on http://127.0.0.1:${port}`);
+      
+      // Get local IP addresses for printing
+      const { networkInterfaces } = require('os');
+      const nets = networkInterfaces();
+      const ips = [];
+      for (const name of Object.keys(nets)) {
+        for (const net of nets[name]) {
+          if (net.family === 'IPv4' && !net.internal) {
+            ips.push(net.address);
+          }
+        }
+      }
+      
+      console.log(`[Electron] Next.js server listening on all interfaces (0.0.0.0:${port})`);
+      console.log(`[Electron] Available on local network at: ${ips.map(ip => `http://${ip}:${port}`).join(', ')}`);
       resolve(port);
     });
   });
